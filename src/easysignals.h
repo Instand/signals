@@ -139,9 +139,9 @@ namespace Room427
             signal = nullptr;
         }
 
-    /*private:
+    private:
         Connector() = delete;
-        Connector(const Connector&) = delete;*/
+        Connector(const Connector&) = delete;
     };
 
 }
