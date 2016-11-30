@@ -8,7 +8,7 @@ Use C++11 compiler
 - Add easysignals.h to your project;
 - Create easy signal:
 
- 	Room427::Signal<ListnerPrototype> easySignal;
+ 	Room427::Signal<std::function<void(int)>> easySignal;
 
 - Connect easySignal to function/any class method:
 
