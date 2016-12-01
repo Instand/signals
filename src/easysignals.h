@@ -56,7 +56,18 @@ namespace Room427
 
         //binds
         template<int>
-        class CheckArgs {};
+        class CheckArgs
+        {
+        public:
+
+            template<typename T, typename Slot>
+            void connect(T& slotObj, Slot&& slot)
+            {
+                (void*)slotObj;
+                (void*)slot;
+                static_assert(false, "Bad/Many arguments");
+            }
+        };
 
         template<>
         class CheckArgs<0>
@@ -117,6 +128,97 @@ namespace Room427
             {
                 return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
                                  std::placeholders::_4);
+            }
+        };
+
+
+        template<>
+        class CheckArgs<5>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5);
+            }
+        };
+
+        template<>
+        class CheckArgs<6>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5, std::placeholders::_6);
+            }
+        };
+
+        template<>
+        class CheckArgs<7>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7);
+            }
+        };
+
+        template<>
+        class CheckArgs<8>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                                                        std::placeholders::_8))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                 std::placeholders::_8);
+            }
+        };
+
+        template<>
+        class CheckArgs<9>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                                                        std::placeholders::_8, std::placeholders::_9))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                 std::placeholders::_8, std::placeholders::_9);
+            }
+        };
+
+        template<>
+        class CheckArgs<10>
+        {
+        public:
+
+            template<typename T, typename Slot>
+            auto connect(T& slotObj, Slot&& slot) -> decltype(std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                                                        std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                                                        std::placeholders::_8, std::placeholders::_9, std::placeholders::_10))
+            {
+                return std::bind(std::forward<Slot>(slot), slotObj, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3,
+                                 std::placeholders::_4, std::placeholders::_5, std::placeholders::_6, std::placeholders::_7,
+                                 std::placeholders::_8, std::placeholders::_9, std::placeholders::_10);
             }
         };
     }
