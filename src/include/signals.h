@@ -30,10 +30,10 @@ namespace es
         using Slots = std::vector<Argument>;
 
         template<typename... Args>
-        inline void operator() (Args... args)
+        inline constexpr void operator() (Args&&... args)
         {
             for (auto& elem : mSlots)
-                elem(args...);
+                elem(std::forward<Args>(args)...);
         }
 
         // creation
@@ -51,6 +51,8 @@ namespace es
         {
             mSlots = std::move(signal.mSlots);
             signal.mSlots.clear();
+
+            return *this;
         }
 
         ~Signal()
@@ -60,8 +62,9 @@ namespace es
 
     private:
 
+        // adds slot to signal
         template<typename T>
-        Signal<Signature>& add(T&& s)
+        constexpr decltype(auto) add(T&& s)
         {
             Argument arg = s;
 
@@ -72,7 +75,8 @@ namespace es
             return *this;
         }
 
-        Signal<Signature>& operator= (void* ptr)
+        // clears all signal slots
+        constexpr decltype(auto) operator=(void* ptr)
         {
             if (ptr == nullptr)
                 mSlots.clear();
@@ -80,8 +84,81 @@ namespace es
             return *this;
         }
 
+        // returns size of slots
+        constexpr std::size_t size() const
+        {
+            return mSlots.size();
+        }
+
         // all connected slots
         Slots mSlots;
+
+        friend class Connector;
+        friend class Signal;
+    };
+
+    /*
+        Signal for function prototype
+    */
+    template<typename T>
+    class Signal<std::function<T>>
+    {
+    public:
+        using Argument = std::function<T>;
+        using Signature = T;
+        using Slots = std::vector<Argument>;
+
+        template<typename... Args>
+        inline constexpr void operator() (Args&&... args)
+        {
+            mSignal(std::forward<Args>(args)...);
+        }
+
+        // creation
+        Signal() = default;
+        Signal(const Signal&) = delete;
+        Signal& operator=(const Signal&) = delete;
+
+        Signal(Signal&& signal):
+            mSignal(std::move(signal.mSignal))
+        {
+        }
+
+        Signal& operator=(Signal&& signal)
+        {
+            mSignal = std::move(signal.mSignal);
+            return *this;
+        }
+
+        ~Signal()
+        {
+            (*this) = nullptr;
+        }
+
+    private:
+
+        // adds slot to signal
+        template<typename T>
+        inline constexpr decltype(auto) add(T&& s)
+        {
+            mSignal.add(std::forward<T>(s));
+            return *this;
+        }
+
+        // clears all slots
+        inline constexpr decltype(auto) operator=(void* ptr)
+        {
+            mSignal = ptr;
+            return *this;
+        }
+
+        // returns size of signal slots
+        inline constexpr std::size_t size() const noexcept
+        {
+            return mSignal.size();
+        }
+
+        Signal<Signature> mSignal;
         friend class Connector;
     };
 
@@ -107,12 +184,7 @@ namespace es
         public:
 
             template<typename T, typename Slot>
-            void connect(T& slotObj, Slot&& slot)
-            {
-                (void)slotObj;
-                (void)slot;
-                static_assert(false, "Bad/Many arguments");
-            }
+            void connect(T& slotObj, Slot&& slot);
         };
 
         template<>
@@ -299,7 +371,7 @@ namespace es
         template<typename Signal>
         inline static std::size_t callbacks(Signal& signal)
         {
-            return signal.mSlots.size();
+            return signal.size();
         }
 
     private:

@@ -5,4 +5,4 @@ cmake_minimum_required (VERSION 3.8)
 
 project (easy_demo)
 
-add_executable(easy_demo signals.h main.cpp)
+add_executable(easy_demo ../../src/include/signals.h main.cpp)
