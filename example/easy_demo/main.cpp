@@ -1,4 +1,4 @@
-#include "signals.h"
+#include "../../src/include/signals.h"
 #include <iostream>
 #include <string>
 
@@ -7,7 +7,7 @@ using Callback = void(const std::string&);
 class A
 {
 public:
-    void generateSignal()
+    void generateSignal() const
     {
         emit signal("Hello, world!");
     }
@@ -25,6 +25,19 @@ public slots:
     }
 };
 
+class Mutable
+{
+public slots:
+    void onSignal(const std::string& str)
+    {
+        ++mValue;
+        std::cout << str << " from Mutable class" << std::endl;
+    }
+
+private:
+    uint32_t mValue = 0;
+};
+
 void onSignal(const std::string& str)
 {
     std::cout << str << " from function" << std::endl;
@@ -35,6 +48,10 @@ int main()
     A a;
     B b;
 
+    auto lambda = [](const std::string& str) {
+        std::cout << str << " from lambda" <<std::endl;
+    };
+
     // member pointer
     es::Connector::connect(a.signal, b, &B::onSignal);
 
@@ -42,10 +59,21 @@ int main()
     es::Connector::connect(a.signal, &onSignal);
 
     // lambda
-    es::Connector::connect(a.signal, [](const std::string& str) {
-        std::cout << str << " from lambda" <<std::endl;
-    });
+    es::Connector::connect(a.signal, lambda);
+
+    const A aa;
+    const Mutable mm;
+
+    // member pointer
+    es::Connector::connect(aa.signal, mm, &Mutable::onSignal);
+
+    // function
+    es::Connector::connect(aa.signal, &onSignal);
+
+    // lambda
+    es::Connector::connect(aa.signal, lambda);
 
     a.generateSignal();
+    aa.generateSignal();
     return 0;
 }

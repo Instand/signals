@@ -12,13 +12,13 @@ namespace es
 
     class Connector;
 
-    /*
+    /*!
         Base preudo signal
     */
     template<typename T>
     class Signal;
 
-    /*
+    /*!
         Signal needed specialization
     */
     template <typename Return, typename... InArgs>
@@ -29,14 +29,18 @@ namespace es
         using Signature = Return(InArgs...);
         using Slots = std::vector<Argument>;
 
+        /**
+         * Generates signal with parameters
+         *
+         * @param args Any count of params
+         */
         template<typename... Args>
-        inline constexpr void operator() (Args&&... args)
+        inline constexpr void operator() (Args&&... args) const
         {
             for (auto& elem : mSlots)
                 elem(std::forward<Args>(args)...);
         }
 
-        // creation
         Signal() = default;
         Signal(const Signal&) = delete;
         Signal& operator=(const Signal&) = delete;
@@ -64,7 +68,7 @@ namespace es
 
         // adds slot to signal
         template<typename T>
-        constexpr decltype(auto) add(T&& s)
+        constexpr auto& add(T&& s)
         {
             Argument arg = s;
 
@@ -76,7 +80,7 @@ namespace es
         }
 
         // clears all signal slots
-        constexpr decltype(auto) operator=(void* ptr)
+        constexpr auto& operator=(void* ptr)
         {
             if (ptr == nullptr)
                 mSlots.clear();
@@ -94,10 +98,12 @@ namespace es
         Slots mSlots;
 
         friend class Connector;
+
+        template<typename T>
         friend class Signal;
     };
 
-    /*
+    /*!
         Signal for function prototype
     */
     template<typename T>
@@ -108,8 +114,13 @@ namespace es
         using Signature = T;
         using Slots = std::vector<Argument>;
 
+        /**
+         * Generates signal with parameters
+         *
+         * @param args Any count of params
+         */
         template<typename... Args>
-        inline constexpr void operator() (Args&&... args)
+        inline constexpr void operator() (Args&&... args) const
         {
             mSignal(std::forward<Args>(args)...);
         }
@@ -124,7 +135,7 @@ namespace es
         {
         }
 
-        Signal& operator=(Signal&& signal)
+        auto& operator=(Signal&& signal)
         {
             mSignal = std::move(signal.mSignal);
             return *this;
@@ -138,15 +149,15 @@ namespace es
     private:
 
         // adds slot to signal
-        template<typename T>
-        inline constexpr decltype(auto) add(T&& s)
+        template<typename Type>
+        inline constexpr auto& add(Type&& s)
         {
-            mSignal.add(std::forward<T>(s));
+            mSignal.add(std::forward<Type>(s));
             return *this;
         }
 
         // clears all slots
-        inline constexpr decltype(auto) operator=(void* ptr)
+        inline constexpr auto& operator=(void* ptr)
         {
             mSignal = ptr;
             return *this;
@@ -330,14 +341,20 @@ namespace es
         };
     }
 
-    /*
+    /*!
         Signal - slot connection entity
     */
     class Connector
     {
     public:
 
-        // connects signal with callback
+        /**
+         * Connects signal with class method
+         *
+         * @param signal Any signal object
+         * @param slotObj Object that would bind with class method
+         * @param slot Class method pointer
+         */
         template<typename Signal, typename T, typename Slot>
         inline static void connect(Signal& signal, const T& slotObj, Slot&& slot)
         {
@@ -345,29 +362,60 @@ namespace es
             signal.add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)));
         }
 
-        // connects signal with callback
+        /**
+         * Connects signal with class method
+         *
+         * @param signal Any signal object
+         * @param slotObj Object that would bind with class method
+         * @param slot Class method pointer
+         */
         template<typename Signal, typename T, typename Slot>
         inline static void connect(const Signal& signal, const T& slotObj, Slot&& slot)
         {
             constexpr int size = Args::GetArguments<Slot>();
-            const_cast<Signal&>(signal).add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)));
+            const_cast<Signal*>(&signal)->add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)));
         }
 
-        // connects signal with callback
+        /**
+         * Connects signal with lambda or function
+         *
+         * @param signal Any signal object
+         * @param slot FUnction or lambda/closure
+         */
         template<typename Signal, typename Slot>
         inline static void connect(Signal& signal, Slot&& slot)
         {
             signal.add(std::forward<Slot>(slot));
         }
 
-        // drops all signal connections
+        /**
+         * Connects signal with lambda or function
+         *
+         * @param signal Any signal object
+         * @param slot FUnction or lambda/closure
+         */
+        template<typename Signal, typename Slot>
+        inline static void connect(const Signal& signal, Slot&& slot)
+        {
+            const_cast<Signal*>(&signal)->add(std::forward<Slot>(slot));
+        }
+
+        /**
+         * Drops all signal connections
+         *
+         * @param signal Any signal object
+         */
         template<typename Signal>
         inline static void disconnect(Signal& signal)
         {
             signal = nullptr;
         }
 
-        // returns signal callbacks size
+        /**
+         * Returns any signal callbacks size
+         *
+         * @return Returns signal callbacks count
+         */
         template<typename Signal>
         inline static std::size_t callbacks(Signal& signal)
         {
