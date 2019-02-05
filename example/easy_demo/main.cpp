@@ -28,14 +28,14 @@ public slots:
 class Mutable
 {
 public slots:
-    void onSignal(const std::string& str)
+    void onSignal(const std::string& str) const
     {
         ++mValue;
         std::cout << str << " from Mutable class" << std::endl;
     }
 
 private:
-    uint32_t mValue = 0;
+    mutable uint32_t mValue = 0;
 };
 
 void onSignal(const std::string& str)
@@ -53,25 +53,25 @@ int main()
     };
 
     // member pointer
-    es::Connector::connect(a.signal, b, &B::onSignal);
+    es::Connector::connect(&a.signal, &b, &B::onSignal);
 
     // function
-    es::Connector::connect(a.signal, &onSignal);
+    es::Connector::connect(&a.signal, &onSignal);
 
     // lambda
-    es::Connector::connect(a.signal, lambda);
+    es::Connector::connect(&a.signal, lambda);
 
     const A aa;
     const Mutable mm;
 
     // member pointer
-    es::Connector::connect(aa.signal, mm, &Mutable::onSignal);
+    es::Connector::connect(&aa.signal, &mm, &Mutable::onSignal);
 
     // function
-    es::Connector::connect(aa.signal, &onSignal);
+    es::Connector::connect(&aa.signal, &onSignal);
 
     // lambda
-    es::Connector::connect(aa.signal, lambda);
+    es::Connector::connect(&aa.signal, lambda);
 
     a.generateSignal();
     aa.generateSignal();
