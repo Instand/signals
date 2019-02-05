@@ -3,7 +3,7 @@ Easy to use object-oriented "callbacks"
 
 # How to use
 
-Use C++14 compiler
+Use C++17 compiler
 
 - Add signals.h to your project;
 - Create easy signal:
@@ -12,7 +12,7 @@ Use C++14 compiler
 
 - Connect easySignal to function/any class method:
 
-	es::Connector::connect(this->easySignal, someObject, &ClassName::method);
+	es::Connector::connect(&easySignal, someObject, &ClassName::method);
 
 - Generate signal:
 
