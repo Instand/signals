@@ -13,7 +13,46 @@
 
 namespace es
 {
+    using ObjectPointer = void*;
+
+    // signal - slot controling entity
     class Connector;
+
+    class ISignal {
+    public:
+        virtual ~ISignal() = default;
+        virtual void drop(void* object) = 0;
+    };
+
+    namespace helper
+    {
+        class ConnectorForwarder
+        {
+        public:
+            template <typename Object>
+            static void disconnect(const ISignal* signal, const Object& object);
+        };
+    }
+
+    class IConnectable {
+    public:
+        virtual ~IConnectable();
+
+    private:
+        std::vector<ISignal*> signals_;
+        friend class Connector;
+    };
+
+    // prevent clang-code model warning
+    IConnectable::~IConnectable()
+    {
+        for (auto signal : signals_)
+        {
+            if (signal != nullptr) {
+                helper::ConnectorForwarder::disconnect(signal, this);
+            }
+        }
+    }
 
     ///
     /// Base preudo signal
@@ -25,12 +64,11 @@ namespace es
     /// Signal needed specialization
     ///
     template <typename Return, typename... InArgs>
-    class Signal<Return(InArgs...)>
+    class Signal<Return(InArgs...)> : public ISignal
     {
     public:
         using Argument = std::function<Return(InArgs...)>;
         using Signature = Return(InArgs...);
-        using ObjectPointer = void*;
         using Slots = std::vector<std::pair<ObjectPointer, Argument>>;
 
         ///
@@ -109,6 +147,22 @@ namespace es
             return slots_;
         }
 
+        virtual void drop(void* object) override final
+        {
+            std::vector<typename Slots::iterator> iterators;
+
+            for (auto iterator = slots_.begin(); iterator != slots_.end(); ++iterator)
+            {
+                if (iterator->first == ObjectPointer(object)) {
+                    iterators.push_back(iterator);
+                }
+            }
+
+            for (auto& iter : iterators) {
+                slots_.erase(iter);
+            }
+        }
+
         // all connected slots
         Slots slots_;
 
@@ -122,12 +176,11 @@ namespace es
     /// Signal for function prototype
     ///
     template <typename T>
-    class Signal<std::function<T>>
+    class Signal<std::function<T>> : public ISignal
     {
     public:
         using Argument = std::function<T>;
         using Signature = T;
-        using ObjectPointer = void*;
         using Slots = std::vector<std::pair<ObjectPointer, Argument>>;
 
         ///
@@ -189,6 +242,11 @@ namespace es
         const Slots& content() const noexcept
         {
             return signal_.content();
+        }
+
+        virtual void drop(void* object) override final
+        {
+            signal_.drop(object);
         }
 
         Signal<Signature> signal_;
@@ -342,6 +400,21 @@ namespace es
     ///
     class Connector
     {
+        template <typename Object>
+        static ObjectPointer checkConnection(const ISignal* signal, const Object& object, std::true_type)
+        {
+            IConnectable* connectable = static_cast<IConnectable*>(object);
+            connectable->signals_.push_back(const_cast<ISignal*>(signal));
+
+            return ObjectPointer(connectable);
+        }
+
+        template <typename Object>
+        static ObjectPointer checkConnection(const ISignal*, const Object& object, std::false_type)
+        {
+            return ObjectPointer(object);
+        }
+
     public:
         explicit Connector() = delete;
         Connector(const Connector&) = delete;
@@ -372,11 +445,10 @@ namespace es
         template <template <typename> typename Signal, typename T, typename Object, typename Slot>
         static void connect(const Signal<T>* signal, const Object& slotObj, Slot&& slot)
         {
-            using ObjectPointer = void*;
             constexpr int size = Args::GetArguments<Slot>();
-            auto obj = ObjectPointer(slotObj);
 
             std::lock_guard<std::shared_mutex> lock(mutex_);
+            auto obj = Connector::checkConnection(static_cast<const ISignal*>(signal), slotObj, std::is_base_of<IConnectable, std::remove_pointer_t<Object>>());
             const_cast<Signal<T>*>(signal)->add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)), obj);
         }
 
@@ -488,6 +560,29 @@ namespace es
         }
 
         ///
+        /// @brief Drops all slots for object from signal interface.
+        ///
+        template <typename Object,
+                  typename = std::enable_if_t<std::is_pointer_v<Object> && std::is_class_v<std::remove_pointer_t<Object>>>>
+        static void disconnect(const ISignal* signal, const Object& object)
+        {
+            std::lock_guard<std::shared_mutex> lock(mutex_);
+            const_cast<ISignal*>(signal)->drop(ObjectPointer(object));
+        }
+
+        ///
+        /// @brief Drops all slots from subscribed object.
+        /// @param signal. Searched cntent from this signal.
+        /// @param object. Drops all slots with this object.
+        ///
+        template <template <typename> typename Signal, typename T, typename Object,
+                  typename = std::enable_if_t<std::is_pointer_v<Object> && std::is_class_v<std::remove_pointer_t<Object>>>>
+        static void disconnect(const Signal<T>* signal, const Object& object)
+        {
+            Connector::disconnect(static_cast<ISignal*>(signal), object);
+        }
+
+        ///
         /// @brief Returns signal callbacks size.
         /// @return Returns any signal object callbacks count.
         ///
@@ -501,6 +596,14 @@ namespace es
     private:
         inline static std::shared_mutex mutex_;
     };
+
+    // forward realization
+    template <typename Object>
+    inline void helper::ConnectorForwarder::disconnect(const ISignal* signal, const Object& object)
+    {
+        Connector::disconnect(signal, object);
+    }
+
 }  // namespace es
 
 #endif  // SIGNALS_HPP

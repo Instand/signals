@@ -43,6 +43,15 @@ void onSignal(const std::string& str)
     std::cout << str << " from function" << std::endl;
 }
 
+class Callable : public es::IConnectable
+{
+public slots:
+    void onSignal(const std::string& str) const
+    {
+        std::cout << str << " from Callable class" << std::endl;
+    }
+};
+
 int main()
 {
     A a;
@@ -75,5 +84,24 @@ int main()
 
     a.generateSignal();
     aa.generateSignal();
+
+    A a1;
+
+    // ICallable entity will automatic disconnect from signal in destruction
+    {
+        Callable c;
+        es::Connector::connect(&a1.signal, &c, &Callable::onSignal);
+
+        // 1
+        std::cout << "Size of callbacks " << es::Connector::callbacks(&a1.signal) << std::endl;
+
+        a1.generateSignal();
+    }
+
+    // 0
+    std::cout << "Size of callbacks " << es::Connector::callbacks(&a1.signal) << std::endl;
+
+    // no callbacks would be called
+    a1.generateSignal();
     return 0;
 }
