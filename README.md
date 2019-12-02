@@ -1,21 +1,35 @@
-# EasySignals
-Easy to use object-oriented "callbacks"
+# Signals
+Header only C++17 library provides easy to use object-oriented "callbacks"
 
-# How to use
+## Features
 
-Use C++17 compiler
+- C++17
+- Header-only
+- Easy to use
+- Thread safe connections via Connector
+- Connection to functions, methods, lambdas
 
-- Add signals.h to your project;
-- Create easy signal:
+## Example
 
- 	es::Signal<void(const std::string&)> easySignal;
+- Create signal:
+```cpp
+ 	cs::Signal<void(const std::string&)> signal;
+```
 
-- Connect easySignal to function/any class method:
-
-	es::Connector::connect(&easySignal, someObject, &ClassName::method);
-
+- Connect signal to method
+```cpp
+	cs::Connector::connect(&signal, &object, &ClassName::method);
+```
+	or to function/lambda
+```cpp
+	cs::Connector::connect(&signal, [](const std::strin& message){
+		std::cout << message << std::endl;
+	});
+```
+	
 - Generate signal:
-
-	emit easySignal("Hello, world!");
+```cpp
+	emit signal("Hello, world!");
+```
 
 - Enjoy;
