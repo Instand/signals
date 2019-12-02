@@ -3,7 +3,6 @@
 
 #include <vector>
 #include <mutex>
-#include <shared_mutex>
 #include <algorithm>
 #include <functional>
 #include <utility>
@@ -13,8 +12,6 @@
 #define emit
 
 namespace cs {
-using ObjectPointer = void*;
-
 // signal - slot controling entity
 class Connector;
 
@@ -24,17 +21,19 @@ public:
     virtual void drop(void* object) = 0;
 };
 
-namespace helper {
+namespace details {
+using ObjectPointer = void*;
+
 class ConnectorForwarder {
 public:
     template <typename Object>
     static void disconnect(const ISignal* signal, const Object& object);
 };
-}  // namespace helper
+}  // namespace details
 
 class IConnectable {
-public:
-    virtual ~IConnectable();
+protected:
+    ~IConnectable();
 
 private:
     std::vector<ISignal*> signals_;
@@ -45,7 +44,7 @@ private:
 IConnectable::~IConnectable() {
     for (auto signal : signals_) {
         if (signal != nullptr) {
-            helper::ConnectorForwarder::disconnect(signal, this);
+            details::ConnectorForwarder::disconnect(signal, this);
         }
     }
 }
@@ -64,7 +63,7 @@ class Signal<Return(InArgs...)> : public ISignal {
 public:
     using Argument = std::function<Return(InArgs...)>;
     using Signature = Return(InArgs...);
-    using Slots = std::vector<std::pair<ObjectPointer, Argument>>;
+    using Slots = std::vector<std::pair<details::ObjectPointer, Argument>>;
 
     ///
     /// @brief Generates signal.
@@ -103,7 +102,7 @@ public:
 private:
     // adds slot to signal
     template <typename T>
-    auto& add(T&& s, ObjectPointer obj = nullptr) {
+    auto& add(T&& s, details::ObjectPointer obj = nullptr) {
         Argument arg = std::forward<T>(s);
 
         if (!arg) {
@@ -139,7 +138,7 @@ private:
         std::vector<typename Slots::iterator> iterators;
 
         for (auto iterator = slots_.begin(); iterator != slots_.end(); ++iterator) {
-            if (iterator->first == ObjectPointer(object)) {
+            if (iterator->first == details::ObjectPointer(object)) {
                 iterators.push_back(iterator);
             }
         }
@@ -166,7 +165,7 @@ class Signal<std::function<T>> : public ISignal {
 public:
     using Argument = std::function<T>;
     using Signature = T;
-    using Slots = std::vector<std::pair<ObjectPointer, Argument>>;
+    using Slots = std::vector<std::pair<details::ObjectPointer, Argument>>;
 
     ///
     /// @brief Generates signal.
@@ -198,7 +197,7 @@ public:
 private:
     // adds slot to signal
     template <typename U>
-    auto& add(U&& s, ObjectPointer obj = nullptr) {
+    auto& add(U&& s, details::ObjectPointer obj = nullptr) {
         signal_.add(std::forward<U>(s), obj);
         return *this;
     }
@@ -361,16 +360,16 @@ public:
 ///
 class Connector {
     template <typename Object>
-    static ObjectPointer checkConnection(const ISignal* signal, const Object& object, std::true_type) {
+    static details::ObjectPointer checkConnection(const ISignal* signal, const Object& object, std::true_type) {
         IConnectable* connectable = static_cast<IConnectable*>(object);
         connectable->signals_.push_back(const_cast<ISignal*>(signal));
 
-        return ObjectPointer(connectable);
+        return details::ObjectPointer(connectable);
     }
 
     template <typename Object>
-    static ObjectPointer checkConnection(const ISignal*, const Object& object, std::false_type) {
-        return ObjectPointer(object);
+    static details::ObjectPointer checkConnection(const ISignal*, const Object& object, std::false_type) {
+        return details::ObjectPointer(object);
     }
 
 public:
@@ -389,7 +388,7 @@ public:
     ///
     template <template <typename> typename Signal, typename T>
     static void connect(const Signal<T>* signal, typename Signal<T>::Argument slot) {
-        std::lock_guard<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         const_cast<Signal<T>*>(signal)->add(slot);
     }
 
@@ -403,7 +402,7 @@ public:
     static void connect(const Signal<T>* signal, const Object& slotObj, Slot&& slot) {
         constexpr int size = Args::GetArguments<Slot>();
 
-        std::lock_guard<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         auto obj = Connector::checkConnection(static_cast<const ISignal*>(signal), slotObj, std::is_base_of<IConnectable, std::remove_pointer_t<Object>>());
         const_cast<Signal<T>*>(signal)->add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)), obj);
     }
@@ -446,7 +445,7 @@ public:
         constexpr int size = Args::GetArguments<Slot>();
         std::function<T> binder = Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot));
 
-        std::lock_guard<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         auto& content = const_cast<Signal<T>*>(signal)->content();
         auto iterator = std::find_if(content.begin(), content.end(), [&](const auto& pair) {
             auto& [object, function] = pair;
@@ -475,7 +474,7 @@ public:
     ///
     template <template <typename> typename Signal, typename T>
     static bool disconnect(const Signal<T>* signal, typename Signal<T>::Argument slot) {
-        std::lock_guard<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         auto& content = const_cast<Signal<T>*>(signal)->content();
         auto iterator = std::find_if(content.begin(), content.end(), [&](const auto& pair) {
             auto& [object, function] = pair;
@@ -501,7 +500,7 @@ public:
     ///
     template <template <typename> typename Signal, typename T>
     static bool disconnect(const Signal<T>* signal) {
-        std::lock_guard<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         auto signalPtr = const_cast<Signal<T>*>(signal);
         *(signalPtr) = nullptr;
 
@@ -513,8 +512,8 @@ public:
     ///
     template <typename Object, typename = std::enable_if_t<std::is_pointer_v<Object> && std::is_class_v<std::remove_pointer_t<Object>>>>
     static void disconnect(const ISignal* signal, const Object& object) {
-        std::lock_guard<std::shared_mutex> lock(mutex_);
-        const_cast<ISignal*>(signal)->drop(ObjectPointer(object));
+        std::lock_guard lock(mutex_);
+        const_cast<ISignal*>(signal)->drop(details::ObjectPointer(object));
     }
 
     ///
@@ -534,17 +533,17 @@ public:
     ///
     template <template <typename> typename Signal, typename T>
     static std::size_t callbacks(const Signal<T>* signal) {
-        std::shared_lock<std::shared_mutex> lock(mutex_);
+        std::lock_guard lock(mutex_);
         return signal->size();
     }
 
 private:
-    inline static std::shared_mutex mutex_;
+    inline static std::mutex mutex_;
 };
 
 // forward realization
 template <typename Object>
-inline void helper::ConnectorForwarder::disconnect(const ISignal* signal, const Object& object) {
+inline void details::ConnectorForwarder::disconnect(const ISignal* signal, const Object& object) {
     Connector::disconnect(signal, object);
 }
 
