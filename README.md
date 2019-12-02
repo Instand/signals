@@ -11,7 +11,7 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 
 ## Example
 
-- Create signal:
+- Create signal (it better to declare signals as members)
 ```cpp
  	cs::Signal<void(const std::string&)> signal;
 ```
@@ -20,9 +20,11 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 ```cpp
 	cs::Connector::connect(&signal, &object, &ClassName::method);
 ```
-	or to function/lambda
+
+or to function/lambda
+
 ```cpp
-	cs::Connector::connect(&signal, [](const std::strin& message){
+	cs::Connector::connect(&signal, [](const std::string& message){
 		std::cout << message << std::endl;
 	});
 ```
@@ -32,4 +34,7 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 	emit signal("Hello, world!");
 ```
 
-- Enjoy;
+- Output
+```
+Hello, world!
+```
