@@ -11,7 +11,7 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 
 ## Example
 
-- Create signal (it better to declare signals as members)
+- Create signal (it's better to declare signals as members)
 ```cpp
  	cs::Signal<void(const std::string&)> signal;
 ```
