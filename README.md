@@ -21,7 +21,7 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 	cs::Connector::connect(&signal, &object, &ClassName::method);
 ```
 
-or to function/lambda
+- or to function/lambda
 
 ```cpp
 	cs::Connector::connect(&signal, [](const std::string& message){
