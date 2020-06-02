@@ -33,21 +33,18 @@ public:
 
 class IConnectable {
 protected:
-    ~IConnectable();
+    ~IConnectable() {
+        for (auto signal : signals_) {
+            if (signal != nullptr) {
+                details::ConnectorForwarder::disconnect(signal, this);
+            }
+        }
+    }
 
 private:
     std::vector<ISignal*> signals_;
     friend class Connector;
 };
-
-// prevent clang-code model warning
-IConnectable::~IConnectable() {
-    for (auto signal : signals_) {
-        if (signal != nullptr) {
-            details::ConnectorForwarder::disconnect(signal, this);
-        }
-    }
-}
 
 ///
 /// Base preudo signal
