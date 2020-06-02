@@ -63,7 +63,9 @@ struct Functor {
     }
 };
 
-struct Bar {
+// signals and slots are just an empty macros
+class Bar {
+public slots:
     void onMessage(const std::string& message) {
         std::cout << message << "method!\n";
     }
