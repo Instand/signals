@@ -6,7 +6,6 @@ Header only C++17 library provides easy to use object-oriented "callbacks"
 - C++17
 - Header-only
 - Easy to use
-- Thread safe connections via Connector
 - Connection to functions, methods, lambdas
 
 ## Glance
