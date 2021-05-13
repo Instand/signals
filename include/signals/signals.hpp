@@ -1,5 +1,5 @@
-#ifndef SIGNALS_HPP
-#define SIGNALS_HPP
+#ifndef CS_SIGNALS_HPP
+#define CS_SIGNALS_HPP
 
 #include <vector>
 #include <mutex>
@@ -225,8 +225,7 @@ private:
     friend class Connector;
 };
 
-// helper namespace
-namespace Args {
+namespace details {
 template <typename T>
 struct GetArguments : GetArguments<decltype(&T::operator())> {};
 
@@ -350,7 +349,7 @@ public:
                          std::placeholders::_6, std::placeholders::_7, std::placeholders::_8, std::placeholders::_9, std::placeholders::_10);
     }
 };
-}  // namespace Args
+}  // namespace details
 
 ///
 /// Signal - slot connection entity
@@ -358,7 +357,7 @@ public:
 class Connector {
     template <typename Object>
     static details::ObjectPointer checkConnection(const ISignal* signal, const Object& object, std::true_type) {
-        IConnectable* connectable = static_cast<IConnectable*>(object);
+        IConnectable* connectable = reinterpret_cast<IConnectable*>(object);
         connectable->signals_.push_back(const_cast<ISignal*>(signal));
 
         return details::ObjectPointer(connectable);
@@ -397,11 +396,11 @@ public:
     ///
     template <template <typename> typename Signal, typename T, typename Object, typename Slot>
     static void connect(const Signal<T>* signal, const Object& slotObj, Slot&& slot) {
-        constexpr int size = Args::GetArguments<Slot>();
+        constexpr int size = details::GetArguments<Slot>();
 
         std::lock_guard lock(mutex_);
         auto obj = Connector::checkConnection(static_cast<const ISignal*>(signal), slotObj, std::is_base_of<IConnectable, std::remove_pointer_t<Object>>());
-        const_cast<Signal<T>*>(signal)->add(Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)), obj);
+        const_cast<Signal<T>*>(signal)->add(details::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot)), obj);
     }
 
     ///
@@ -439,8 +438,8 @@ public:
             return false;
         }
 
-        constexpr int size = Args::GetArguments<Slot>();
-        std::function<T> binder = Args::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot));
+        constexpr int size = details::GetArguments<Slot>();
+        std::function<T> binder = details::CheckArgs<size>().connect(slotObj, std::forward<Slot>(slot));
 
         std::lock_guard lock(mutex_);
         auto& content = const_cast<Signal<T>*>(signal)->content();
@@ -546,4 +545,4 @@ inline void details::ConnectorForwarder::disconnect(const ISignal* signal, const
 
 }  // namespace cs
 
-#endif  // SIGNALS_HPP
+#endif  // CS_SIGNALS_HPP
